@@ -20,7 +20,7 @@ mamouni_1xp is a powerful and efficient Discord self-bot built using `discord.js
 ## 🛠 Setup
 1. Clone this repository:
    ```sh
-   git clone https://github.com/mamouni1xp/sbot v1.git
+   git clone https://github.com/mamouni1xp/sbot-v1.git
    cd mamouni_1xp
    ```
 2. Install dependencies:
