@@ -1,11 +1,11 @@
-require('dotenv').config(); // .env 
+require('dotenv').config(); // Load .env variables
 
 const { Client } = require('discord.js-selfbot-v13');
 const client = new Client({ checkUpdate: false });
 const OWNER_ID = process.env.OWNER_ID;
 const userEmojis = new Map();
 
-// 5000 = 5s hadi bax yetmess7o lmessag 
+// Helper function to send auto-deleting messages
 async function sendTempMessage(channel, content, options = {}) {
     try {
         console.log('Sending temporary message:', content);
@@ -22,21 +22,20 @@ async function sendTempMessage(channel, content, options = {}) {
 // Help command content
 const helpContent = `
 **Available Commands:**
-🔹 !help - Shows this help message
+🔹 !aya - Shows this help message
 🔹 !zidd @user [emoji] - Add user to auto-react list with optional custom emoji
 🔹 !kherej @user - Remove user from auto-react list
 🔹 !lista - Show all users in auto-react list
-🔹 !ajivc [channel_id] - Join a voice channel
-🔹 !9ewedvc - Leave current voice channel
+🔹 !ayanavc [channel_id] - Join a voice channel
+🔹 !9ayana - Leave current voice channel
 
 Note: All commands are owner-only except !help
- # by:mamouni_1xp
 `;
 
 client.once('ready', () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
     try {
-        client.user.setActivity("By mamouni_1xp", { 
+        client.user.setActivity("1xp server", { 
             type: "STREAMING", 
             url: "https://www.twitch.tv/mamouni_1xp" 
         });
@@ -46,35 +45,35 @@ client.once('ready', () => {
     }
 });
 
-// List of automatic replies u can change {mamouni1xp with your user}
+// List of automatic replies
 const autoReplies = {
-    "mamouni1xp": "# chokran 3la lmov 😍", //te9der dir lista twila *after 5s active*
+    "baki": "oui",
 };
 
 client.on('messageCreate', async (message) => {
     if (message.author.id === client.user.id) return;
 
-    // Help command 
-    if (message.content === '!help') {
+    // Help command
+    if (message.content === '!aya') {
         console.log('Help command received');
         await sendTempMessage(message.channel, helpContent);
         console.log('Help message sent');
         return;
     }
 
-    // Auto-reply 
+    // Auto-reply based on specific keywords
     for (const [trigger, reply] of Object.entries(autoReplies)) {
         if (message.content.toLowerCase().includes(trigger)) {
             await sendTempMessage(message.channel, reply);
         }
     }
 
-    // Auto-react 
+    // Auto-react to specific users
     if (userEmojis.has(message.author.id)) {
         await message.react(userEmojis.get(message.author.id));
     }
 
-    // add or del user from auto react 
+    // Owner-only commands
     if (message.author.id === OWNER_ID) {
         const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
 
@@ -85,10 +84,10 @@ client.on('messageCreate', async (message) => {
             if (user) {
                 userEmojis.set(user.id, customEmoji);
                 await sendTempMessage(message.channel, 
-                    `✅ تمت إضافة ${user.tag} مع الايموجي ${customEmoji}`);
+                    `✅sf zedt${user.tag} m3a had lemoji${customEmoji}`);
             } else {
                 await sendTempMessage(message.channel, 
-                    "⚠️ لم يتم تحديد المستخدم.");
+                    "⚠️ makhtarit walou ");
             }
         }
 
@@ -97,26 +96,26 @@ client.on('messageCreate', async (message) => {
             if (user && userEmojis.has(user.id)) {
                 userEmojis.delete(user.id);
                 await sendTempMessage(message.channel,
-                    `❌ تمت إزالة ${user.tag} من قائمة التفاعل التلقائي.`);
+                    `❌ sf marantfa3elx m3a hada ${user.tag} `);
             } else {
                 await sendTempMessage(message.channel,
-                    "⚠️ هذا المستخدم غير موجود في القائمة.");
+                    "⚠️ had khona makaynch flista.");
             }
         }
 
         if (message.content.startsWith('!lista')) {
             if (userEmojis.size === 0) {
                 await sendTempMessage(message.channel,
-                    "⚠️ لا يوجد مستخدمون في قائمة التفاعل التلقائي.");
+                    "⚠️makayn 7ta wa7ed");
             } else {
                 const userList = Array.from(userEmojis.entries())
                     .map(([userId, emoji]) => `<@${userId}> → ${emoji}`);
                 await sendTempMessage(message.channel,
-                    `✅ قائمة المستخدمين وايموجياتهم:\n${userList.join("\n")}`);
+                    `✅lista nta3 7babi\n${userList.join("\n")}`);
             }
         }
-// vc channel section 
-        if (message.content.startsWith('!ajivc')) {
+
+        if (message.content.startsWith('!ayanavc')) {
             const args = message.content.split(' ')[1];
             if (args) {
                 const channel = message.guild.channels.cache.get(args);
@@ -128,36 +127,36 @@ client.on('messageCreate', async (message) => {
                             adapterCreator: message.guild.voiceAdapterCreator,
                         });
                         await sendTempMessage(message.channel,
-                            `✅ Bot has joined the voice channel: ${channel.name}`);
+                            `sf dkholt: ${channel.name}`);
                     } catch (error) {
                         console.error('Error joining VC:', error);
                         await sendTempMessage(message.channel,
-                            '❌ Failed to join the voice channel.');
+                            '❌ ma9dertch ndkhol.');
                     }
                 } else {
                     await sendTempMessage(message.channel,
-                        '⚠️ Invalid voice channel ID.');
+                        '⚠️id makhedamx akhona.');
                 }
             } else {
                 await sendTempMessage(message.channel,
-                    '⚠️ Please provide a valid voice channel ID.');
+                    '⚠️ 3tini id khedam.');
             }
         }
 
-        if (message.content === '!9ewedvc') {
+        if (message.content === '!9ayana') {
             const connection = getVoiceConnection(message.guild.id);
             if (connection) {
                 connection.destroy();
                 await sendTempMessage(message.channel,
-                    '✅ Bot has left the voice channel.');
+                    '✅ sf khrejt channel.');
             } else {
                 await sendTempMessage(message.channel,
-                    '⚠️ Bot is not connected to any voice channel.');
+                    '⚠️ madakhel l7ta vc.');
             }
         }
     }
 });
-//anti raid bot 
+
 client.login(process.env.DISCORD_TOKEN).catch(err => {
     console.error("❌ Login failed:", err);
     process.exit(1);
