@@ -35,7 +35,7 @@ Note: All commands are owner-only except !help
 client.once('ready', () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
     try {
-        client.user.setActivity("1xp server", { 
+        client.user.setActivity("1", { 
             type: "STREAMING", 
             url: "https://www.twitch.tv/mamouni_1xp" 
         });
