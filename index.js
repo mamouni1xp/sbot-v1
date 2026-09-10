@@ -47,7 +47,7 @@ client.once('ready', () => {
 
 // List of automatic replies
 const autoReplies = {
-    "baki": "oui",
+    "iibaki": "oui",
 };
 
 client.on('messageCreate', async (message) => {
