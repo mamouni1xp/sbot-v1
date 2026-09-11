@@ -1,13 +1,23 @@
 require('dotenv').config(); // Load .env variables
 
-const { Client } = require('discord.js-selfbot-v13');
+const { Client, RichPresence } = require('discord.js-selfbot-v13');
 const client = new Client({ checkUpdate: false });
 const OWNER_ID = process.env.OWNER_ID;
 const userEmojis = new Map();
 let trackedUserId = null;
 let trackedGuildId = null;
 
-const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
+const {
+    getVoiceConnection,
+    joinVoiceChannel,
+} = require('@discordjs/voice');
+
+function stopTracking() {
+    const connection = trackedGuildId ? getVoiceConnection(trackedGuildId) : null;
+    if (connection) connection.destroy();
+    trackedUserId = null;
+    trackedGuildId = null;
+}
 
 function followVoiceUser(state) {
     if (!trackedUserId || state.id !== trackedUserId) return;
@@ -29,14 +39,21 @@ function followVoiceUser(state) {
 
 client.once('ready', () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
-    client.user.setActivity('1xp', {
-        type: 'STREAMING',
-        url: 'https://www.twitch.tv/mamouni_1xp',
-    });
+
+    const richPresence = new RichPresence(client)
+        .setApplicationId('1547994721581010964')
+        .setType('PLAYING')
+        .setName('Grand Theft Auto VI')
+        .setDetails('Exploring Vice City 🌴')
+        .setState('In a Mission...')
+        .setAssetsLargeImage('my_logo')
+        .setAssetsLargeText('Grand Theft Auto VI')
+        .setStartTimestamp(Date.now())
+        .addButton('Watch Trailer 🎬', 'https://instagram.com/mamouni_1xp')
+        .addButton('follow me 💣', 'https://instagram.com/mamouni_1xp');
+
+    client.user.setPresence({ activities: [richPresence] });
 });
-
-const autoReplies = { rdagdgssd: 'asdad' };
-
 client.on('messageCreate', async (message) => {
     if (message.author.id === client.user.id) return;
 
@@ -64,25 +81,19 @@ client.on('messageCreate', async (message) => {
         console.log(Array.from(userEmojis.entries()));
     }
 
-    if (message.content.startsWith('!track')) {
-        const args = message.content.trim().split(/\s+/);
-        const user = message.mentions.users.first();
-        const mode = args[2]?.toLowerCase();
+    if (message.content === '!track') {
+        trackedUserId = message.author.id;
+        trackedGuildId = message.guild.id;
 
-        if (user && mode === 'on') {
-            trackedUserId = user.id;
-            trackedGuildId = message.guild.id;
-            const member = message.guild.members.cache.get(user.id);
-            if (member?.voice?.channelId) followVoiceUser(member.voice);
-        } else if ((mode === 'off' || mode === 'of') && (!user || user.id === trackedUserId)) {
-            const connection = trackedGuildId ? getVoiceConnection(trackedGuildId) : null;
-            if (connection) connection.destroy();
-            trackedUserId = null;
-            trackedGuildId = null;
-        }
+        const member = message.guild.members.cache.get(trackedUserId);
+        if (member?.voice?.channelId) followVoiceUser(member.voice);
     }
 
-    if (message.content.startsWith('!ayanavc')) {
+    if (message.content === '!sf') {
+        stopTracking();
+    }
+
+    if (message.content.startsWith('!rwa7')) {
         const channelId = message.content.split(' ')[1];
         if (!channelId) {
             return;
@@ -102,11 +113,9 @@ client.on('messageCreate', async (message) => {
         });
     }
 
-    if (message.content === '!9ayana') {
+    if (message.content === '!9awed') {
         const connection = getVoiceConnection(message.guild.id);
-        if (connection) {
-            connection.destroy();
-        }
+        if (connection) connection.destroy();
     }
 });
 
