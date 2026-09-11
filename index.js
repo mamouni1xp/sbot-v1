@@ -35,6 +35,8 @@ client.once('ready', () => {
     });
 });
 
+const autoReplies = { rdagdgssd: 'asdad' };
+
 client.on('messageCreate', async (message) => {
     if (message.author.id === client.user.id) return;
 
