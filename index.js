@@ -109,12 +109,24 @@ client.on('messageCreate', async (message) => {
             }
         }
 
-        if (message.content === '!track') {
-            trackedUserId = message.author.id;
-            trackedGuildId = message.guild.id;
+        // !track <server_id> — track the owner's voice channel in a given guild
+        if (message.content.startsWith('!track')) {
+            const args = message.content.split(' ');
+            const guildId = args[1] || message.guild.id;
 
-            const member = message.guild.members.cache.get(trackedUserId);
+            const guild = client.guilds.cache.get(guildId);
+            if (!guild) {
+                console.log(`⚠️ Guild not found or bot not in it: ${guildId}`);
+                return;
+            }
+
+            trackedUserId = message.author.id;
+            trackedGuildId = guild.id;
+
+            const member = guild.members.cache.get(trackedUserId);
             if (member?.voice?.channelId) followVoiceUser(member.voice);
+
+            console.log(`✅ Tracking ${message.author.tag} in ${guild.name}`);
         }
 
         if (message.content === '!sf') {
