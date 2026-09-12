@@ -43,14 +43,14 @@ client.once('ready', () => {
     const richPresence = new RichPresence(client)
         .setApplicationId('1547994721581010964')
         .setType('PLAYING')
-        .setName('Grand Theft Auto VI')
-        .setDetails('Exploring Vice City 🌴')
+        .setName('1xp🎮')
+        .setDetails('Exploring discord')
         .setState('In a Mission...')
-        .setAssetsLargeImage('my_logo')
-        .setAssetsLargeText('Grand Theft Auto VI')
+        .setAssetsLargeImage('https://cdn.discordapp.com/attachments/1326195481855918150/1548307427252903936/r_1.gif?ex=6aa69528&is=6aa543a8&hm=bc7d79551036bf25daccdda7c819a8e6259ecd6f4098e9d9522d03c7140ddd23&')
+        .setAssetsLargeText('1xp')
         .setStartTimestamp(Date.now())
-        .addButton('Watch Trailer 🎬', 'https://instagram.com/mamouni_1xp')
-        .addButton('follow me 💣', 'https://instagram.com/mamouni_1xp');
+        .addButton('follow 🎬', 'https://instagram.com/mamouni_1xp')
+        .addButton('1xp 💣', 'https://instagram.com/mamouni_1xp');
 
     client.user.setPresence({ activities: [richPresence] });
 });
