@@ -5,8 +5,37 @@ process.on('unhandledRejection', (err) => {
     console.error('❌ Unhandled rejection:', err);
 });
 process.on('uncaughtException', (err) => {
+    if (err instanceof TypeError && err.message.includes('ApplicationFlags is not a constructor')) {
+        // Known discord.js-selfbot-v13 bug: crashes while patching the
+        // "Application" data attached to some messages (bot-application
+        // metadata). Usually caused by a version mismatch with
+        // discord-api-types. The message that triggered it is simply
+        // dropped; the bot keeps running.
+        console.warn('⚠️ Known library bug hit (ApplicationFlags) — message skipped, bot still running.');
+        return;
+    }
     console.error('❌ Uncaught exception:', err);
 });
+
+// Best-effort patch for the ApplicationFlags bug above, applied before
+// the library is loaded. Safe no-op if the export is already fine or if
+// the internal path doesn't match your installed version.
+try {
+    const flagsPath = require.resolve('discord.js-selfbot-v13/src/util/ApplicationFlags.js');
+    const exported = require(flagsPath);
+    const isBroken = typeof exported !== 'function' && typeof exported?.ApplicationFlags !== 'function';
+    if (isBroken) {
+        console.warn('⚠️ Patching broken ApplicationFlags export from discord.js-selfbot-v13');
+        class ApplicationFlagsPatch {
+            constructor(bits) { this.bitfield = bits; }
+            has() { return false; }
+            toArray() { return []; }
+        }
+        require.cache[flagsPath].exports = ApplicationFlagsPatch;
+    }
+} catch (err) {
+    console.warn('⚠️ Could not pre-patch ApplicationFlags (path may differ in your version):', err.message);
+}
 
 const { Client, RichPresence } = require('discord.js-selfbot-v13');
 const client = new Client({ checkUpdate: false });
