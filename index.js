@@ -41,10 +41,10 @@ client.once('ready', () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
 
     const richPresence = new RichPresence(client)
-        .setApplicationId('1547994721581010964')
+        .setApplicationId('11548314125367640117')
         .setType('PLAYING')
         .setName('1xp🎮')
-        .setDetails('Exploring discord')
+        .setDetails('just watching')
         .setState('In a Mission...')
         .setAssetsLargeImage('https://cdn.discordapp.com/attachments/1326195481855918150/1548307427252903936/r_1.gif?ex=6aa69528&is=6aa543a8&hm=bc7d79551036bf25daccdda7c819a8e6259ecd6f4098e9d9522d03c7140ddd23&')
         .setAssetsLargeText('1xp')
