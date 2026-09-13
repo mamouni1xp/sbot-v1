@@ -1,25 +1,19 @@
 require('dotenv').config(); // Load .env variables
 
-// Catch anything that would otherwise crash the whole process
+
 process.on('unhandledRejection', (err) => {
     console.error('❌ Unhandled rejection:', err);
 });
 process.on('uncaughtException', (err) => {
     if (err instanceof TypeError && err.message.includes('ApplicationFlags is not a constructor')) {
-        // Known discord.js-selfbot-v13 bug: crashes while patching the
-        // "Application" data attached to some messages (bot-application
-        // metadata). Usually caused by a version mismatch with
-        // discord-api-types. The message that triggered it is simply
-        // dropped; the bot keeps running.
         console.warn('⚠️ Known library bug hit (ApplicationFlags) — message skipped, bot still running.');
         return;
     }
     console.error('❌ Uncaught exception:', err);
+
 });
 
-// Best-effort patch for the ApplicationFlags bug above, applied before
-// the library is loaded. Safe no-op if the export is already fine or if
-// the internal path doesn't match your installed version.
+
 try {
     const flagsPath = require.resolve('discord.js-selfbot-v13/src/util/ApplicationFlags.js');
     const exported = require(flagsPath);
@@ -39,7 +33,18 @@ try {
 
 const { Client, RichPresence } = require('discord.js-selfbot-v13');
 const client = new Client({ checkUpdate: false });
+
+// --- Required env vars, checked up front instead of failing deep inside login() ---
 const OWNER_ID = process.env.OWNER_ID;
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+if (!DISCORD_TOKEN) {
+    console.error('❌ DISCORD_TOKEN is missing from your environment/.env file. Exiting.');
+    process.exit(1);
+}
+if (!OWNER_ID) {
+    console.warn('⚠️ OWNER_ID is not set — owner-only commands will never match anyone.');
+}
+
 const userEmojis = new Map();
 let trackedUserId = null;
 let trackedGuildId = null;
@@ -47,7 +52,45 @@ let trackedGuildId = null;
 const {
     getVoiceConnection,
     joinVoiceChannel,
+    VoiceConnectionStatus,
+    entersState,
 } = require('@discordjs/voice');
+
+// Attach error/state handling to a voice connection so its internal
+// EventEmitter never throws an unhandled 'error' and so dead connections
+// get cleaned up instead of leaking.
+function wireConnection(connection) {
+    connection.on('error', (err) => {
+        console.error('❌ Voice connection error:', err.message);
+    });
+
+    connection.on('stateChange', (oldState, newState) => {
+        if (newState.status === VoiceConnectionStatus.Disconnected) {
+            // Try to recover briefly; if it doesn't reconnect, destroy cleanly.
+            Promise.race([
+                entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+                entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+            ]).catch(() => {
+                if (connection.state.status !== VoiceConnectionStatus.Destroyed) {
+                    connection.destroy();
+                }
+            });
+        }
+    });
+
+    return connection;
+}
+
+function safeJoinVoiceChannel(options) {
+    try {
+        const connection = joinVoiceChannel(options);
+        wireConnection(connection);
+        return connection;
+    } catch (err) {
+        console.error('❌ Failed to join voice channel:', err.message);
+        return null;
+    }
+}
 
 function stopTracking() {
     const connection = trackedGuildId ? getVoiceConnection(trackedGuildId) : null;
@@ -65,35 +108,54 @@ function followVoiceUser(state) {
         return;
     }
 
-    try {
-        joinVoiceChannel({
-            channelId: state.channelId,
-            guildId: state.guild.id,
-            adapterCreator: state.guild.voiceAdapterCreator,
-            selfDeaf: false,
-            selfMute: false,
-        });
-    } catch (err) {
-        console.error('❌ Failed to follow voice user:', err);
-    }
+    safeJoinVoiceChannel({
+        channelId: state.channelId,
+        guildId: state.guild.id,
+        adapterCreator: state.guild.voiceAdapterCreator,
+        selfDeaf: false,
+        selfMute: false,
+    });
 }
 
 client.once('ready', () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
 
-    const richPresence = new RichPresence(client)
-        .setApplicationId('1547994721581010964')
-        .setType('PLAYING')
-        .setName('1xp🎮')
-        .setDetails('Exploring discord')
-        .setState('In a Mission...')
-        .setAssetsLargeImage('https://cdn.discordapp.com/attachments/1326195481855918150/1548307427252903936/r_1.gif?ex=6aa69528&is=6aa543a8&hm=bc7d79551036bf25daccdda7c819a8e6259ecd6f4098e9d9522d03c7140ddd23&')
-        .setAssetsLargeText('1xp')
-        .setStartTimestamp(Date.now())
-        .addButton('follow 🎬', 'https://instagram.com/mamouni_1xp')
-        .addButton('1xp 💣', 'https://instagram.com/mamouni_1xp');
+    try {
+        const richPresence = new RichPresence(client)
+            .setApplicationId('1547994721581010964')
+            .setType('PLAYING')
+            .setName('1xp🎮')
+            .setDetails('Exploring discord')
+            .setState('In a Mission...')
+            .setAssetsLargeImage('https://cdn.discordapp.com/attachments/1326195481855918150/1548307427252903936/r_1.gif?ex=6aa69528&is=6aa543a8&hm=bc7d79551036bf25daccdda7c819a8e6259ecd6f4098e9d9522d03c7140ddd23&')
+            .setAssetsLargeText('1xp')
+            .setStartTimestamp(Date.now())
+            .addButton('follow 🎬', 'https://instagram.com/mamouni_1xp')
+            .addButton('1xp 💣', 'https://instagram.com/mamouni_1xp');
 
-    client.user.setPresence({ activities: [richPresence] });
+        client.user.setPresence({ activities: [richPresence] });
+    } catch (err) {
+        // A bad/expired asset URL or malformed presence shouldn't kill the bot
+        console.error('❌ Failed to set presence:', err.message);
+    }
+});
+
+// Surface client-level errors instead of letting them become uncaught
+// exceptions (EventEmitter throws synchronously if 'error' has no listener).
+client.on('error', (err) => {
+    console.error('❌ Client error:', err.message);
+});
+client.on('warn', (info) => {
+    console.warn('⚠️ Client warning:', info);
+});
+
+// If the gateway drops and discord.js-selfbot-v13 gives up reconnecting,
+// this fires. Log it clearly rather than silently going dark.
+client.on('invalidated', () => {
+    console.error('❌ Session invalidated — token may have been reset/logged out elsewhere. Restart required.');
+});
+client.on('disconnect', () => {
+    console.warn('⚠️ Client disconnected from gateway.');
 });
 
 client.on('messageCreate', async (message) => {
@@ -174,17 +236,13 @@ client.on('messageCreate', async (message) => {
                 return;
             }
 
-            try {
-                joinVoiceChannel({
-                    channelId: channel.id,
-                    guildId: message.guild.id,
-                    adapterCreator: message.guild.voiceAdapterCreator,
-                    selfDeaf: false,
-                    selfMute: false,
-                });
-            } catch (err) {
-                console.error('❌ Failed to join voice channel:', err);
-            }
+            safeJoinVoiceChannel({
+                channelId: channel.id,
+                guildId: message.guild.id,
+                adapterCreator: message.guild.voiceAdapterCreator,
+                selfDeaf: false,
+                selfMute: false,
+            });
         }
 
         if (message.content === '!9awed') {
@@ -215,21 +273,17 @@ client.on('messageCreate', async (message) => {
                 return;
             }
 
-            try {
-                joinVoiceChannel({
-                    channelId: channel.id,
-                    guildId: guild.id,
-                    adapterCreator: guild.voiceAdapterCreator,
-                    selfDeaf: false,
-                    selfMute: false,
-                });
-                console.log(`✅ Joined ${channel.name} in ${guild.name}`);
-            } catch (err) {
-                console.error('❌ Failed to join voice channel via !jc:', err);
-            }
+            const connection = safeJoinVoiceChannel({
+                channelId: channel.id,
+                guildId: guild.id,
+                adapterCreator: guild.voiceAdapterCreator,
+                selfDeaf: false,
+                selfMute: false,
+            });
+            if (connection) console.log(`✅ Joined ${channel.name} in ${guild.name}`);
         }
     } catch (err) {
-        // Last line of defense so a single bad message never kills the whole bot
+       
         console.error('❌ Error handling message:', err);
     }
 });
@@ -243,7 +297,21 @@ client.on('voiceStateUpdate', (oldState, newState) => {
     }
 });
 
-client.login(process.env.DISCORD_TOKEN).catch(err => {
-    console.error("❌ Login failed:", err);
-    process.exit(1);
-});
+
+async function loginWithRetry(maxAttempts = 3, delayMs = 5000) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            await client.login(DISCORD_TOKEN);
+            return;
+        } catch (err) {
+            console.error(`❌ Login attempt ${attempt}/${maxAttempts} failed:`, err.message);
+            if (attempt === maxAttempts) {
+                console.error('❌ All login attempts failed. Exiting.');
+                process.exit(1);
+            }
+            await new Promise((res) => setTimeout(res, delayMs));
+        }
+    }
+}
+
+loginWithRetry();
